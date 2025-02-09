@@ -1,4 +1,4 @@
-name: Manual Build and Upload
+name: Build and Upload ByDoubao
 
 on:
   workflow_dispatch:
@@ -15,7 +15,12 @@ jobs:
           repository: shinnpuru/VoiceTransl
           ref: main
 
-      # 2. 删除 llma 文件夹
+      # 2. 切换到克隆项目的根目录
+      - name: Change directory to project root
+        shell: pwsh
+        run: Set-Location -Path ${{ github.workspace }}
+
+      # 3. 删除克隆项目中的 llma 文件夹
       - name: Delete llma folder
         shell: pwsh
         run: |
@@ -31,7 +36,7 @@ jobs:
             Write-Host "The llma folder does not exist."
           }
 
-      # 3. 下载最新的包含 llama-【release tag】-bin-win-sycl-x64.zip 的 release 并解压重命名为 llma
+      # 4. 下载最新的包含 llama-【release tag】-bin-win-sycl-x64.zip 的 release 并解压
       - name: Download and extract llama zip
         shell: pwsh
         run: |
@@ -44,7 +49,7 @@ jobs:
               if ($asset.name -like "llama-$tag-bin-win-sycl-x64.zip") {
                 $zipUrl = $asset.browser_download_url
                 Invoke-WebRequest -Uri $zipUrl -OutFile "llama-$tag-bin-win-sycl-x64.zip"
-                Expand-Archive -Path "llama-$tag-bin-win-sycl-x64.zip" -DestinationPath "./llma"
+                Expand-Archive -Path "llama-$tag-bin-win-sycl-x64.zip" -DestinationPath "./temp_llma"
                 Remove-Item -Path "llama-$tag-bin-win-sycl-x64.zip"
                 $found = $true
                 break
@@ -58,7 +63,19 @@ jobs:
             throw "Could not find a release with llama-【release tag】-bin-win-sycl-x64.zip"
           }
 
-      # 4. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
+      # 5. 将解压后的文件夹重命名为 llma 并移动到克隆项目的根目录
+      - name: Rename and move folder
+        shell: pwsh
+        run: |
+          if (Test-Path -Path "./temp_llma") {
+            Move-Item -Path "./temp_llma" -Destination "./llma" -Force
+            Write-Host "Successfully moved and renamed the folder to llma."
+          } else {
+            Write-Error "The temp_llma folder does not exist."
+            throw
+          }
+
+      # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -73,13 +90,13 @@ jobs:
       - name: Build project with PyInstaller
         run: pyinstaller app.spec
 
-      # 5. 将构建好的项目打包成 ZIP 文件
+      # 7. 将构建好的项目打包成 ZIP 文件
       - name: Package built project into ZIP
         shell: pwsh
         run: |
           Compress-Archive -Path dist\* -DestinationPath dist\built-project.zip
 
-      # 6. 上传 ZIP 格式的构建项目
+      # 8. 上传 ZIP 格式的构建项目
       - name: Upload built project as ZIP
         uses: actions/upload-artifact@v4
         with:
