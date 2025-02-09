@@ -1,4 +1,4 @@
-name: Build and Upload By Doubao
+name: Manual Build and Upload
 
 on:
   workflow_dispatch:
@@ -17,8 +17,19 @@ jobs:
 
       # 2. 删除 llma 文件夹
       - name: Delete llma folder
-        shell: bash
-        run: rm -rf llma
+        shell: pwsh
+        run: |
+          if (Test-Path -Path "llma") {
+            try {
+              Remove-Item -Path "llma" -Recurse -Force -ErrorAction Stop
+              Write-Host "Successfully deleted the llma folder."
+            } catch {
+              Write-Error "Failed to delete the llma folder: $_"
+              throw
+            }
+          } else {
+            Write-Host "The llma folder does not exist."
+          }
 
       # 3. 下载最新的包含 llama-【release tag】-bin-win-sycl-x64.zip 的 release 并解压重命名为 llma
       - name: Download and extract llama zip
@@ -33,7 +44,7 @@ jobs:
               if ($asset.name -like "llama-$tag-bin-win-sycl-x64.zip") {
                 $zipUrl = $asset.browser_download_url
                 Invoke-WebRequest -Uri $zipUrl -OutFile "llama-$tag-bin-win-sycl-x64.zip"
-                Expand-Archive -Path "llama-$tag-bin-win-sycl-x64.zip" -DestinationPath "llma"
+                Expand-Archive -Path "llama-$tag-bin-win-sycl-x64.zip" -DestinationPath "./llma"
                 Remove-Item -Path "llama-$tag-bin-win-sycl-x64.zip"
                 $found = $true
                 break
