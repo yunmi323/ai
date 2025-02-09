@@ -20,16 +20,32 @@ jobs:
         shell: bash
         run: rm -rf llma
 
-      # 3. 下载最新的 llama-【release tag】-bin-win-sycl-x64.zip 并解压重命名为 llma
+      # 3. 下载最新的包含 llama-【release tag】-bin-win-sycl-x64.zip 的 release 并解压重命名为 llma
       - name: Download and extract llama zip
-        shell: bash
+        shell: pwsh
         run: |
-          # 获取最新的 release tag
-          latest_tag=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.tag_name')
-          zip_url="https://github.com/ggerganov/llama.cpp/releases/download/${latest_tag}/llama-${latest_tag}-bin-win-sycl-x64.zip"
-          wget $zip_url
-          unzip llama-${latest_tag}-bin-win-sycl-x64.zip -d llma
-          rm llama-${latest_tag}-bin-win-sycl-x64.zip
+          $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggerganov/llama.cpp/releases"
+          $found = $false
+          foreach ($release in $releases) {
+            $tag = $release.tag_name
+            $assets = $release.assets
+            foreach ($asset in $assets) {
+              if ($asset.name -like "llama-$tag-bin-win-sycl-x64.zip") {
+                $zipUrl = $asset.browser_download_url
+                Invoke-WebRequest -Uri $zipUrl -OutFile "llama-$tag-bin-win-sycl-x64.zip"
+                Expand-Archive -Path "llama-$tag-bin-win-sycl-x64.zip" -DestinationPath "llma"
+                Remove-Item -Path "llama-$tag-bin-win-sycl-x64.zip"
+                $found = $true
+                break
+              }
+            }
+            if ($found) {
+              break
+            }
+          }
+          if (-not $found) {
+            throw "Could not find a release with llama-【release tag】-bin-win-sycl-x64.zip"
+          }
 
       # 4. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
@@ -56,7 +72,7 @@ jobs:
 
       # 6. 上传 ZIP 格式的构建项目
       - name: Upload built project as ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: built-project
           path: dist/built-project.zip
