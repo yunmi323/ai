@@ -33,7 +33,7 @@ jobs:
           repository: ggerganov/llama.cpp
           latest: true
           fileName: "llama-*-bin-win-sycl-x64.zip"
-          out-file-path: ".\VoiceTransl"
+          out-file-path: "./VoiceTransl"
 
       # 第四步：解压并重命名为 llma
       - name: Unzip and rename
