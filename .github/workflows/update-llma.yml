@@ -70,7 +70,7 @@ jobs:
             }
           } while ($retryCount -lt $maxRetries)
           # 解压并重命名
-          Expand-Archive -Path "llama.zip" -DestinationPath ".\VoiceTransl\llma"
+          Expand-Archive -Path "llama.zip" -DestinationPath "llma"
         shell: powershell
           
       # 调试步骤：查看当前目录内容
