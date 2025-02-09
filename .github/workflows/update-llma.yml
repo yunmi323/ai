@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: Get-ChildItem
 
-      # 3. 删除克隆项目中的 llma 文件夹
+      # 3. 删除克隆项目中的 llama 文件夹
       - name: Delete llama folder
         shell: pwsh
         run: |
@@ -36,8 +36,13 @@ jobs:
           } else {
             Write-Host "The llama folder does not exist."
           }
-
-      # 4. 下载最新的 llama-【release tag】-bin-win-sycl-x64.zip 并解压重命名为 llma
+          
+      # 调试步骤：查看当前目录内容
+      - name: List current directory contents
+        shell: pwsh
+        run: Get-ChildItem
+        
+      # 4. 下载最新的 llama-【release tag】-bin-win-sycl-x64.zip 并解压重命名为 llama
       - name: Download and extract llama binary
         run: |
           $retryCount = 0
@@ -70,7 +75,7 @@ jobs:
             }
           } while ($retryCount -lt $maxRetries)
           # 解压并重命名
-          Expand-Archive -Path "llama.zip" -DestinationPath "llma"
+          Expand-Archive -Path "llama.zip" -DestinationPath "llama"
         shell: powershell
           
       # 调试步骤：查看当前目录内容
@@ -78,10 +83,10 @@ jobs:
         shell: pwsh
         run: Get-ChildItem
 
-      # 新增步骤：查看 llma 文件夹内容
-      - name: View llma folder contents
+      # 新增步骤：查看 llama 文件夹内容
+      - name: View llama folder contents
         run: |
-          Get-ChildItem -Path .\llma -Recurse
+          Get-ChildItem -Path .\llama -Recurse
         shell: powershell
         
       # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
