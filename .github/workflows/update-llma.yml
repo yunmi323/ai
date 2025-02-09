@@ -1,4 +1,4 @@
-name: Build and Upload ByDoubao
+name: Build and Upload By Doubao
 
 on:
   workflow_dispatch:
@@ -26,19 +26,19 @@ jobs:
         run: Set-Location -Path ${{ github.workspace }}
 
       # 3. 删除克隆项目中的 llma 文件夹
-      - name: Delete llma folder
+      - name: Delete llama folder
         shell: pwsh
         run: |
-          if (Test-Path -Path "llma") {
+          if (Test-Path -Path "llama") {
             try {
-              Remove-Item -Path "llma" -Recurse -Force -ErrorAction Stop
-              Write-Host "Successfully deleted the llma folder."
+              Remove-Item -Path "llama" -Recurse -Force -ErrorAction Stop
+              Write-Host "Successfully deleted the llama folder."
             } catch {
-              Write-Error "Failed to delete the llma folder: $_"
+              Write-Error "Failed to delete the llama folder: $_"
               throw
             }
           } else {
-            Write-Host "The llma folder does not exist."
+            Write-Host "The llama folder does not exist."
           }
 
       # 4. 下载最新的包含 llama-【release tag】-bin-win-sycl-x64.zip 的 release 并解压
