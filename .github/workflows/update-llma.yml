@@ -14,7 +14,12 @@ jobs:
         with:
           repository: shinnpuru/VoiceTransl
           ref: main
-
+          
+      # 调试步骤：查看当前目录内容
+      - name: List current directory contents
+        shell: pwsh
+        run: Get-ChildItem
+        
       # 2. 切换到克隆项目的根目录
       - name: Change directory to project root
         shell: pwsh
