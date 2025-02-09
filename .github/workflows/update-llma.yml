@@ -1,4 +1,4 @@
-name: Manual Build and Upload
+name: Build and Upload By Doubao
 
 on:
   workflow_dispatch:
@@ -64,11 +64,9 @@ jobs:
 
       # 5. 将构建好的项目打包成 ZIP 文件
       - name: Package built project into ZIP
-        shell: bash
+        shell: pwsh
         run: |
-          cd dist
-          zip -r built-project.zip .
-          cd ..
+          Compress-Archive -Path dist\* -DestinationPath dist\built-project.zip
 
       # 6. 上传 ZIP 格式的构建项目
       - name: Upload built project as ZIP
