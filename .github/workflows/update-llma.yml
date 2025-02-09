@@ -76,24 +76,30 @@ jobs:
             throw
           }
 
-      # 6. 安装 Python 依赖并使用 PyInstaller 构建项目
+      # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10  # 可以根据项目需求调整 Python 版本
+          python-version: 3.10
 
-      - name: Install dependencies and build project
-        working-directory: ./VoiceTransl
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-          pyinstaller app.spec
-        shell: powershell
 
-      # 7. 将构建好的项目打包上传
-      - name: Package and upload build artifacts
+      - name: Build project with PyInstaller
+        run: pyinstaller app.spec
+
+      # 7. 将构建好的项目打包成 ZIP 文件
+      - name: Package built project into ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\* -DestinationPath dist\built-project.zip
+
+      # 8. 上传 ZIP 格式的构建项目
+      - name: Upload built project as ZIP
         uses: actions/upload-artifact@v4
         with:
           name: built-project
-          path: ./VoiceTransl/dist
+          path: dist/built-project.zip
