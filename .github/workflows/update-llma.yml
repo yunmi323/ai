@@ -15,7 +15,6 @@ jobs:
         with:
           repository: shinnpuru/VoiceTransl
           ref: main
-          path: VoiceTransl
 
       # 调试步骤：查看当前目录内容
       - name: List current directory contents
