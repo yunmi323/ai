@@ -1,43 +1,62 @@
-name: Update Llma Folder
+name: Manual Build and Upload
 
-# 允许手动触发工作流
 on:
   workflow_dispatch:
 
 jobs:
-  update-llma:
-    runs-on: windows-latest  # 使用 Windows 环境来处理 .zip 文件解压
+  build-and-upload:
+    runs-on: windows-latest
 
     steps:
-      # 第一步：克隆 VoiceTransl 仓库的 main 分支
-      - name: Clone VoiceTransl repository
+      # 1. 克隆 https://github.com/shinnpuru/VoiceTransl.git main 分支
+      - name: Checkout VoiceTransl repository
         uses: actions/checkout@v3
         with:
           repository: shinnpuru/VoiceTransl
           ref: main
-          path: VoiceTransl
 
-      # 第二步：删除 llma 文件夹
+      # 2. 删除 llma 文件夹
       - name: Delete llma folder
-        run: |
-          if (Test-Path -Path ".\VoiceTransl\llma") {
-            Remove-Item -Path ".\VoiceTransl\llma" -Recurse -Force
-          }
-        shell: powershell
+        shell: bash
+        run: rm -rf llma
 
-      # 第三步：下载最新的 llama-【release tag】-bin-win-sycl-x64.zip
-      - name: Download llama release
-        id: download-release
-        uses: robinraju/release-downloader@v1.8
+      # 3. 下载最新的 llama-【release tag】-bin-win-sycl-x64.zip 并解压重命名为 llma
+      - name: Download and extract llama zip
+        shell: bash
+        run: |
+          # 获取最新的 release tag
+          latest_tag=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.tag_name')
+          zip_url="https://github.com/ggerganov/llama.cpp/releases/download/${latest_tag}/llama-${latest_tag}-bin-win-sycl-x64.zip"
+          wget $zip_url
+          unzip llama-${latest_tag}-bin-win-sycl-x64.zip -d llma
+          rm llama-${latest_tag}-bin-win-sycl-x64.zip
+
+      # 4. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          repository: ggerganov/llama.cpp
-          latest: true
-          fileName: "llama-*-bin-win-sycl-x64.zip"
-          out-file-path: "./VoiceTransl"
+          python-version: 3.10
 
-      # 第四步：解压并重命名为 llma
-      - name: Unzip and rename
+      - name: Install dependencies
         run: |
-          $zipPath = (Get-ChildItem -Path ".\VoiceTransl" -Filter "llama-*-bin-win-sycl-x64.zip").FullName
-          Expand-Archive -Path $zipPath -DestinationPath ".\VoiceTransl\llma" -Force
-        shell: powershell
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build project with PyInstaller
+        run: pyinstaller app.spec
+
+      # 5. 将构建好的项目打包成 ZIP 文件
+      - name: Package built project into ZIP
+        shell: bash
+        run: |
+          cd dist
+          zip -r built-project.zip .
+          cd ..
+
+      # 6. 上传 ZIP 格式的构建项目
+      - name: Upload built project as ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-project
+          path: dist/built-project.zip
