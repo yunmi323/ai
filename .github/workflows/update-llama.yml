@@ -89,6 +89,62 @@ jobs:
           Get-ChildItem -Path .\llama -Recurse
         shell: powershell
         
+      # 删除 whisper 文件夹下的 ggml*.dll 文件
+      - name: Delete ggml*.dll files in whisper folder
+        shell: pwsh
+        run: |
+          if (Test-Path -Path "whisper") {
+            $dllFiles = Get-ChildItem -Path "whisper" -Filter "ggml*.dll" -Recurse
+            if ($dllFiles) {
+              foreach ($file in $dllFiles) {
+                try {
+                  Remove-Item -Path $file.FullName -Force -ErrorAction Stop
+                  Write-Host "Successfully deleted $($file.FullName)"
+                } catch {
+                  Write-Error "Failed to delete $($file.FullName): $_"
+                }
+              }
+            } else {
+              Write-Host "No ggml*.dll files found in the whisper folder."
+            }
+          } else {
+            Write-Host "The whisper folder does not exist."
+          }
+          
+      # 查看 whisper 文件夹内容
+      - name: View llama folder contents
+        run: |
+          Get-ChildItem -Path .\whisper -Recurse
+        shell: powershell
+        
+      # 新增步骤：将 llama 文件夹下的 ggml*.dll 等文件复制到 whisper 文件夹
+      - name: Copy ggml*.dll files from llama to whisper
+        shell: pwsh
+        run: |
+          if (Test-Path -Path "llama" -PathType Container) {
+            if (-not (Test-Path -Path "whisper" -PathType Container)) {
+              New-Item -ItemType Directory -Path "whisper" | Out-Null
+              Write-Host "Created the whisper folder."
+            }
+            $dllFiles = Get-ChildItem -Path "llama" -Filter "ggml*.dll" -File
+            foreach ($file in $dllFiles) {
+              try {
+                Copy-Item -Path $file.FullName -Destination "whisper" -Force -ErrorAction Stop
+                Write-Host "Successfully copied $($file.FullName) to whisper folder."
+              } catch {
+                Write-Error "Failed to copy $($file.FullName) to whisper folder: $_"
+              }
+            }
+          } else {
+            Write-Host "The llama folder does not exist."
+          }
+          
+      # 查看 whisper 文件夹内容
+      - name: View llama folder contents
+        run: |
+          Get-ChildItem -Path .\whisper -Recurse
+        shell: powershell
+          
       # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
         uses: actions/setup-python@v4
