@@ -77,6 +77,12 @@ jobs:
       - name: List current directory contents
         shell: pwsh
         run: Get-ChildItem
+
+      # 新增步骤：查看 llma 文件夹内容
+      - name: View llma folder contents
+        run: |
+          Get-ChildItem -Path .\llma -Recurse
+        shell: powershell
         
       # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
