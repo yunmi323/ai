@@ -59,7 +59,7 @@ jobs:
 
       # 5. 将构建好的项目打包上传
       - name: Package and upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: built-project
           path: ./VoiceTransl/dist
