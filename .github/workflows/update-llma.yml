@@ -1,4 +1,4 @@
-name: Build and Package Project
+name: Build and Package Project By Doubao
 
 # 允许手动触发工作流
 on:
@@ -37,50 +37,52 @@ jobs:
             Write-Host "The llama folder does not exist."
           }
 
-      # 4. 下载最新的包含 llama-【release tag】-bin-win-sycl-x64.zip 的 release 并解压
-      - name: Download and extract llama zip
-        shell: pwsh
+      # 4. 下载最新的 llama-【release tag】-bin-win-sycl-x64.zip 并解压重命名为 llma
+      - name: Download and extract llama binary
         run: |
-          $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggerganov/llama.cpp/releases"
-          $found = $false
-          foreach ($release in $releases) {
-            $tag = $release.tag_name
-            $assets = $release.assets
-            foreach ($asset in $assets) {
-              if ($asset.name -like "llama-$tag-bin-win-sycl-x64.zip") {
-                $zipUrl = $asset.browser_download_url
-                Invoke-WebRequest -Uri $zipUrl -OutFile "llama-$tag-bin-win-sycl-x64.zip"
-                Expand-Archive -Path "llama-$tag-bin-win-sycl-x64.zip" -DestinationPath "./temp_llma"
-                Remove-Item -Path "llama-$tag-bin-win-sycl-x64.zip"
-                $found = $true
-                break
+          $retryCount = 0
+          $maxRetries = 3
+          do {
+            try {
+              # 获取所有版本信息
+              $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggerganov/llama.cpp/releases"
+              # 筛选出包含 bin-win-sycl-x64.zip 的版本
+              $matchingReleases = $releases | Where-Object { $_.assets.name -like "*bin-win-sycl-x64.zip" }
+              if ($matchingReleases.Length -eq 0) {
+                throw "No releases found with bin-win-sycl-x64.zip asset."
+              }
+              # 取最新的匹配版本
+              $latestRelease = $matchingReleases[0]
+              # 找到对应的资产
+              $asset = $latestRelease.assets | Where-Object { $_.name -like "*bin-win-sycl-x64.zip" } | Select-Object -First 1
+              $downloadUrl = $asset.browser_download_url
+              # 下载文件
+              Invoke-WebRequest -Uri $downloadUrl -OutFile "llama.zip"
+              break
+            } catch {
+              $retryCount++
+              if ($retryCount -lt $maxRetries) {
+                Write-Host "Download failed, retrying in 5 seconds..."
+                Start-Sleep -Seconds 5
+              } else {
+                throw $_
               }
             }
-            if ($found) {
-              break
-            }
-          }
-          if (-not $found) {
-            throw "Could not find a release with llama-【release tag】-bin-win-sycl-x64.zip"
-          }
-
-      # 5. 将解压后的文件夹重命名为 llma 并移动到克隆项目的根目录
-      - name: Rename and move folder
+          } while ($retryCount -lt $maxRetries)
+          # 解压并重命名
+          Expand-Archive -Path "llama.zip" -DestinationPath ".\VoiceTransl\llma"
+        shell: powershell
+          
+      # 调试步骤：查看当前目录内容
+      - name: List current directory contents
         shell: pwsh
-        run: |
-          if (Test-Path -Path "./temp_llma") {
-            Move-Item -Path "./temp_llma" -Destination "./llma" -Force
-            Write-Host "Successfully moved and renamed the folder to llma."
-          } else {
-            Write-Error "The temp_llma folder does not exist."
-            throw
-          }
-
+        run: Get-ChildItem
+        
       # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.10"  # 可以根据项目需求调整 Python 版本，3.10要加引号不然变3.1
 
       - name: Install dependencies
         run: |
