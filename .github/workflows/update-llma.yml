@@ -1,0 +1,43 @@
+name: Update Llma Folder
+
+# 允许手动触发工作流
+on:
+  workflow_dispatch:
+
+jobs:
+  update-llma:
+    runs-on: windows-latest  # 使用 Windows 环境来处理 .zip 文件解压
+
+    steps:
+      # 第一步：克隆 VoiceTransl 仓库的 main 分支
+      - name: Clone VoiceTransl repository
+        uses: actions/checkout@v3
+        with:
+          repository: shinnpuru/VoiceTransl
+          ref: main
+          path: VoiceTransl
+
+      # 第二步：删除 llma 文件夹
+      - name: Delete llma folder
+        run: |
+          if (Test-Path -Path ".\VoiceTransl\llma") {
+            Remove-Item -Path ".\VoiceTransl\llma" -Recurse -Force
+          }
+        shell: powershell
+
+      # 第三步：下载最新的 llama-【release tag】-bin-win-sycl-x64.zip
+      - name: Download llama release
+        id: download-release
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ggerganov/llama.cpp
+          latest: true
+          fileName: "llama-*-bin-win-sycl-x64.zip"
+          out-file-path: ".\VoiceTransl"
+
+      # 第四步：解压并重命名为 llma
+      - name: Unzip and rename
+        run: |
+          $zipPath = (Get-ChildItem -Path ".\VoiceTransl" -Filter "llama-*-bin-win-sycl-x64.zip").FullName
+          Expand-Archive -Path $zipPath -DestinationPath ".\VoiceTransl\llma" -Force
+        shell: powershell
