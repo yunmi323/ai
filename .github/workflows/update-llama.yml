@@ -117,7 +117,7 @@ jobs:
           Get-ChildItem -Path .\whisper -Recurse
         shell: powershell
         
-      # 新增步骤：将 llama 文件夹下的 ggml*.dll 等文件复制到 whisper 文件夹
+      # 将 llama 文件夹下的 ggml*.dll 等文件复制到 whisper 文件夹
       - name: Copy ggml*.dll files from llama to whisper
         shell: pwsh
         run: |
@@ -144,6 +144,18 @@ jobs:
         run: |
           Get-ChildItem -Path .\whisper -Recurse
         shell: powershell
+
+      # 添加识别语种
+      - name: Update app.py
+        run: |
+          # 先将原列表替换为包含新元素的列表
+          sed -i 's/self.input_lang.addItems(\[\'ja\',\'en\',\'ko\',\'ru\',\'fr\'\])/self.input_lang.addItems([\'cn\',\'yue\',\'ja\',\'en\',\'ko\',\'ru\',\'fr\'])/' app.py
+          
+      # 添加翻译语种
+      - name: Update GalTransl/__init__.py
+        run: |
+          # 在字典开头插入新的键值对
+          sed -i 's/LANG_SUPPORTED = {/LANG_SUPPORTED = {\n    "cn": "Chinese",\n    "yue": "Cantonese",/' GalTransl/__init__.py
           
       # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
