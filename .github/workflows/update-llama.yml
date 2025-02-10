@@ -149,13 +149,17 @@ jobs:
       - name: Update app.py
         run: |
           # 先将原列表替换为包含新元素的列表
-          sed -i 's/self.input_lang.addItems(\[\'ja\',\'en\',\'ko\',\'ru\',\'fr\'\])/self.input_lang.addItems([\'cn\',\'yue\',\'ja\',\'en\',\'ko\',\'ru\',\'fr\'])/' app.py
-          
+          $content = Get-Content -Path app.py
+          $newContent = $content -replace "self.input_lang.addItems\(\['ja','en','ko','ru','fr'\]\)", "self.input_lang.addItems(['cn','yue','ja','en','ko','ru','fr'])"
+          $newContent | Set-Content -Path app.py
+        shell: powershell
+        
       # 添加翻译语种
       - name: Update GalTransl/__init__.py
         run: |
           # 在字典开头插入新的键值对
           sed -i 's/LANG_SUPPORTED = {/LANG_SUPPORTED = {\n    "cn": "Chinese",\n    "yue": "Cantonese",/' GalTransl/__init__.py
+        shell: powershell
           
       # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
       - name: Set up Python
