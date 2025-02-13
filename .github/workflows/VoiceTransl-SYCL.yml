@@ -1,4 +1,4 @@
-name: Build and Package Project By Doubao
+name: VoiceTransl-SYCL Build and Package Project By Doubao
 
 # 允许手动触发工作流
 on:
