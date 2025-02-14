@@ -19,7 +19,7 @@ jobs:
 
     # 关键步骤2：环境准备
     - name: Setup oneAPI
-      uses: intel/setup-oneapi@v1
+      uses: neelravi/intel-oneapi-github-actions@v2.0.0
       with:
         components: compiler,dpcpp-cpp,vtune  # 完整工具链
 
