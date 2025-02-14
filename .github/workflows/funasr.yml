@@ -1,0 +1,75 @@
+name: SYCL Build Pipeline
+on:
+  workflow_dispatch:
+
+env:
+  ONEAPI_VERSION: "2024.0"
+  BUILD_TYPE: "Release"
+
+jobs:
+  sycl-migration:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Clone VoiceTransl repository
+      uses: actions/checkout@v3
+      with:
+        repository: modelscope/FunASR
+        ref: main
+        path: 'funasr-src'  # 显式指定源码目录
+        submodules: 'recursive'  # 必须递归拉取子模块
+        fetch-depth: 0  # 获取完整提交历史（某些构建工具需要）
+
+# 关键步骤2：环境准备
+    - name: Setup oneAPI
+      uses: intel/setup-oneapi@v1
+      with:
+        components: compiler,dpcpp-cpp,vtune  # 完整工具链
+
+    # 关键步骤3：构建配置
+    - name: Configure SYCL Build
+      working-directory: ./funasr-src  # 进入源码目录
+      run: |
+        cmake -B build \
+          -DUSE_SYCL=ON \
+          -DCMAKE_CXX_COMPILER=dpcpp \
+          -DSYCL_TARGETS="spir64_gen-xe_hpc"  # Intel GPU专用目标
+
+    # 关键步骤4：增量构建
+    - name: Build with SYCL
+      working-directory: ./funasr-src
+      run: |
+        cmake --build build --parallel $(nproc)
+        cp build/libsycl_modules.so python/funasr  # 部署Python扩展
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -DUSE_SYCL=ON \
+              -DCMAKE_CXX_COMPILER=dpcpp \
+              -DSYCL_TARGET_DEVICE="opencl:gpu"  # 多设备兼容配置
+    
+    # 利用SYCL内核缓存加速编译
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/sycl_kernels
+          build/CMakeCache.txt
+        key: ${{ runner.os }}-sycl-${{ hashFiles('**/CMakeLists.txt') }}
+    
+    # 集成Intel性能分析工具链
+    - name: Run SYCL Benchmark
+      env:
+        VTUNE_PROFILER: ${{ secrets.VTUNE_LICENSE }}
+      run: |
+        source /opt/intel/oneapi/setvars.sh
+        ./bin/asr_bench --input test.wav \
+                        --sycl-device ${{ matrix.device }} | tee benchmark.log
+      
+    - name: Upload Python Wheel
+      uses: actions/upload-artifact@v3
+      with:
+        name: sycl-wheel
+        path: dist/*.whl  # 生成适配SYCL的Python包
+        
+
+
+
