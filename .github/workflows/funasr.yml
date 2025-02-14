@@ -11,19 +11,20 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Clone VoiceTransl repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: modelscope/FunASR
         ref: main
         path: 'funasr-src'  # 显式指定源码目录
-        submodules: 'recursive'  # 必须递归拉取子模块
-        fetch-depth: 0  # 获取完整提交历史（某些构建工具需要）
 
-# 关键步骤2：环境准备
+    # 关键步骤2：环境准备
     - name: Setup oneAPI
       uses: intel/setup-oneapi@v1
       with:
         components: compiler,dpcpp-cpp,vtune  # 完整工具链
+
+    # 需显式设置DPC++编译器
+    - run: cmake -DCMAKE_CXX_COMPILER=dpcpp ..  # 关键参数缺失
 
     # 关键步骤3：构建配置
     - name: Configure SYCL Build
