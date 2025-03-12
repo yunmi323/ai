@@ -1,190 +1,73 @@
-name: VoiceTransl-SYCL Build and Package Project By Doubao
+name: Intel Arc SYCL CI
 
-# 允许手动触发工作流
-on:
-  workflow_dispatch:
+on: [push, pull_request]
 
 jobs:
-  build-and-package:
-    runs-on: windows-latest  # 使用 Windows 环境，因为要下载 Windows 二进制文件
-
+  build-and-test:
+    runs-on: ubuntu-22.04
     steps:
-      # 1. 克隆 https://github.com/shinnpuru/VoiceTransl.git 的 main 分支
-      - name: Clone VoiceTransl repository
-        uses: actions/checkout@v3
+      # 检出代码
+      - name: Checkout FunASR Code
+        uses: actions/checkout@v4
         with:
-          repository: shinnpuru/VoiceTransl
+          repository: modelscope/FunASR
           ref: main
 
-      # 调试步骤：查看当前目录内容
-      - name: List current directory contents
-        shell: pwsh
-        run: Get-ChildItem
+      # 检查网络连接
+      - name: Check network connectivity
+        run: |
+          wget -q --spider https://launchpad.net
+          if [ $? -eq 0 ]; then
+            echo "Network is working, can access Launchpad."
+          else
+            echo "Network issue, cannot access Launchpad."
+            exit 1
+          fi
 
-      # 3. 删除克隆项目中的 llama 文件夹
-      - name: Delete llama folder
-        shell: pwsh
+      # 安装软件属性通用包
+      - name: Install software-properties-common
         run: |
-          if (Test-Path -Path "llama") {
-            try {
-              Remove-Item -Path "llama" -Recurse -Force -ErrorAction Stop
-              Write-Host "Successfully deleted the llama folder."
-            } catch {
-              Write-Error "Failed to delete the llama folder: $_"
-              throw
-            }
-          } else {
-            Write-Host "The llama folder does not exist."
-          }
-          
-      # 调试步骤：查看当前目录内容
-      - name: List current directory contents
-        shell: pwsh
-        run: Get-ChildItem
-        
-      # 4. 下载最新的 llama-【release tag】-bin-win-sycl-x64.zip 并解压重命名为 llama
-      - name: Download and extract llama binary
-        run: |
-          $retryCount = 0
-          $maxRetries = 3
-          do {
-            try {
-              # 获取所有版本信息
-              $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggerganov/llama.cpp/releases"
-              # 筛选出包含 bin-win-sycl-x64.zip 的版本
-              $matchingReleases = $releases | Where-Object { $_.assets.name -like "*bin-win-sycl-x64.zip" }
-              if ($matchingReleases.Length -eq 0) {
-                throw "No releases found with bin-win-sycl-x64.zip asset."
-              }
-              # 取最新的匹配版本
-              $latestRelease = $matchingReleases[0]
-              # 找到对应的资产
-              $asset = $latestRelease.assets | Where-Object { $_.name -like "*bin-win-sycl-x64.zip" } | Select-Object -First 1
-              $downloadUrl = $asset.browser_download_url
-              # 下载文件
-              Invoke-WebRequest -Uri $downloadUrl -OutFile "llama.zip"
-              break
-            } catch {
-              $retryCount++
-              if ($retryCount -lt $maxRetries) {
-                Write-Host "Download failed, retrying in 5 seconds..."
-                Start-Sleep -Seconds 5
-              } else {
-                throw $_
-              }
-            }
-          } while ($retryCount -lt $maxRetries)
-          # 解压并重命名
-          Expand-Archive -Path "llama.zip" -DestinationPath "llama"
-        shell: powershell
-          
-      # 调试步骤：查看当前目录内容
-      - name: List current directory contents
-        shell: pwsh
-        run: Get-ChildItem
+          sudo apt update
+          sudo apt install -y software-properties-common
 
-      # 新增步骤：查看 llama 文件夹内容
-      - name: View llama folder contents
+      # 添加Intel官方PPA源（假设名称为intel-opencl/intel-opencl）
+      - name: Add Intel PPA
         run: |
-          Get-ChildItem -Path .\llama -Recurse
-        shell: powershell
-        
-      # 删除 whisper 文件夹下的 ggml*.dll 文件
-      - name: Delete ggml*.dll files in whisper folder
-        shell: pwsh
-        run: |
-          if (Test-Path -Path "whisper") {
-            $dllFiles = Get-ChildItem -Path "whisper" -Filter "ggml*.dll" -Recurse
-            if ($dllFiles) {
-              foreach ($file in $dllFiles) {
-                try {
-                  Remove-Item -Path $file.FullName -Force -ErrorAction Stop
-                  Write-Host "Successfully deleted $($file.FullName)"
-                } catch {
-                  Write-Error "Failed to delete $($file.FullName): $_"
-                }
-              }
-            } else {
-              Write-Host "No ggml*.dll files found in the whisper folder."
-            }
-          } else {
-            Write-Host "The whisper folder does not exist."
-          }
-          
-      # 查看 whisper 文件夹内容
-      - name: View llama folder contents
-        run: |
-          Get-ChildItem -Path .\whisper -Recurse
-        shell: powershell
-        
-      # 将 llama 文件夹下的 ggml*.dll 等文件复制到 whisper 文件夹
-      - name: Copy ggml*.dll files from llama to whisper
-        shell: pwsh
-        run: |
-          if (Test-Path -Path "llama" -PathType Container) {
-            if (-not (Test-Path -Path "whisper" -PathType Container)) {
-              New-Item -ItemType Directory -Path "whisper" | Out-Null
-              Write-Host "Created the whisper folder."
-            }
-            $dllFiles = Get-ChildItem -Path "llama" -Filter "ggml*.dll" -File
-            foreach ($file in $dllFiles) {
-              try {
-                Copy-Item -Path $file.FullName -Destination "whisper" -Force -ErrorAction Stop
-                Write-Host "Successfully copied $($file.FullName) to whisper folder."
-              } catch {
-                Write-Error "Failed to copy $($file.FullName) to whisper folder: $_"
-              }
-            }
-          } else {
-            Write-Host "The llama folder does not exist."
-          }
-          
-      # 查看 whisper 文件夹内容
-      - name: View llama folder contents
-        run: |
-          Get-ChildItem -Path .\whisper -Recurse
-        shell: powershell
+          sudo add-apt-repository -y ppa:intel-opencl/intel-opencl
+          sudo apt update
 
-      # 添加识别语种
-      #- name: Update app.py
-      #  run: |
-      #    # 先将原列表替换为包含新元素的列表
-      #    $content = Get-Content -Path app.py
-      #    $newContent = $content -replace "self.input_lang.addItems\(\['ja','en','ko','ru','fr'\]\)", "self.input_lang.addItems(['cn','yue','ja','en','ko','ru','fr'])"
-      #    $newContent | Set-Content -Path app.py
-      #  shell: powershell
-        
-      # 添加翻译语种
-      #- name: Update GalTransl/__init__.py
-      #  run: |
-      #    # 在字典开头插入新的键值对
-      #    sed -i 's/LANG_SUPPORTED = {/LANG_SUPPORTED = {\n    "cn": "Chinese",\n    "yue": "Cantonese",/' GalTransl/__init__.py
-      #  shell: powershell
-          
-      # 6. 安装 Python 依赖然后应用 pyinstaller app.spec 构建项目
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"  # 可以根据项目需求调整 Python 版本，3.10要加引号不然变3.1
-
-      - name: Install dependencies
+      # 安装Intel Arc显卡驱动
+      - name: Install Intel Arc Driver
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+          sudo apt install -y intel-igc-core intel-igc-opencl intel-media-va-driver-non-free
 
-      - name: Build project with PyInstaller
-        run: pyinstaller app.spec
-
-      # 7. 将构建好的项目打包成 ZIP 文件
-      - name: Package built project into ZIP
-        shell: pwsh
+      # 安装Intel OneAPI Toolkit
+      - name: Install OneAPI
         run: |
-          Compress-Archive -Path dist\* -DestinationPath dist\built-project.zip
+          wget https://registrationcenter-download.intel.com/akdlm/irc_nas/19152/l_BaseKit_p_2024.2.0.256_offline.sh
+          chmod +x l_BaseKit_p_2024.2.0.256_offline.sh
+          sudo ./l_BaseKit_p_2024.2.0.256_offline.sh --non-interactive --install-dir /opt/intel/oneapi
+          source /opt/intel/oneapi/setvars.sh
 
-      # 8. 上传 ZIP 格式的构建项目
-      - name: Upload built project as ZIP
+      # 编译FunASR
+      - name: Build with DPC++
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_CXX_COMPILER=dpcpp -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+      # 打包编译产物
+      - name: Package Artifacts
+        run: |
+          cd build
+          mkdir -p funasr-bin
+          cp funasr funasr-bin/
+          cp -r ../config funasr-bin/
+          tar -czvf funasr-sycl-linux.tar.gz funasr-bin/
+
+      # 上传到GitHub Artifacts
+      - name: Upload Binaries
         uses: actions/upload-artifact@v4
         with:
-          name: built-project
-          path: dist/built-project.zip
+          name: funasr-sycl-linux
+          path: build/funasr-sycl-linux.tar.gz
