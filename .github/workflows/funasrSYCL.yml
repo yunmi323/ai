@@ -12,7 +12,7 @@ jobs:
     steps:
       # 检出代码
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository:  modelscope/FunASR
           ref: main
@@ -51,7 +51,7 @@ jobs:
 
       # 上传到GitHub Artifacts
       - name: Upload Binaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: funasr-sycl-linux
           path: build/funasr-sycl-linux.tar.gz
