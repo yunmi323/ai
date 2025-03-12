@@ -1,0 +1,57 @@
+name: Intel Arc SYCL CI
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      # 检出代码
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          repository:  modelscope/FunASR
+          ref: main
+
+      # 安装Intel Arc显卡驱动
+      - name: Install Intel Arc Driver
+        run: |
+          sudo apt update && sudo apt install -y software-properties-common
+          sudo add-apt-repository -y ppa:dgpu-pro/ppa
+          sudo apt update
+          sudo apt install -y intel-igc-core intel-igc-opencl intel-media-va-driver-non-free
+
+      # 安装Intel OneAPI Toolkit
+      - name: Install OneAPI
+        run: |
+          wget https://registrationcenter-download.intel.com/akdlm/irc_nas/19152/l_BaseKit_p_2024.2.0.256_offline.sh
+          chmod +x l_BaseKit_p_2024.2.0.256_offline.sh
+          sudo ./l_BaseKit_p_2024.2.0.256_offline.sh --non-interactive --install-dir /opt/intel/oneapi
+          source /opt/intel/oneapi/setvars.sh
+
+      # 编译FunASR
+      - name: Build with DPC++
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_CXX_COMPILER=dpcpp -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+
+      # 打包编译产物
+      - name: Package Artifacts
+        run: |
+          cd build
+          mkdir -p funasr-bin
+          cp funasr funasr-bin/
+          cp -r ../config funasr-bin/
+          tar -czvf funasr-sycl-linux.tar.gz funasr-bin/
+
+      # 上传到GitHub Artifacts
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: funasr-sycl-linux
+          path: build/funasr-sycl-linux.tar.gz
