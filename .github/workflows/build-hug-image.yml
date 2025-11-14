@@ -4,23 +4,47 @@ on:
   push:
     branches: [ main ]  # 替换为你的主分支名称，例如 'master'
     paths:
-      - 'hug/**'  # 可选：只在 hug 相关文件变化时触发（但由于从外部拉取，可忽略或删除）
+      - 'hug/**'  # 可选：忽略，因为从外部拉取
   pull_request:
-    branches: [ main ]  # PR 触发，用于测试构建
-  workflow_dispatch:  # 允许手动触发（推荐）
+    branches: [ main ]
+  workflow_dispatch:  # 手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read  # 基本权限
-      packages: write  # GHCR 推送需要写权限
+      contents: read
+      packages: write
     steps:
       - name: Checkout original repository (hug branch)
         uses: actions/checkout@v4
         with:
           repository: eooce/node-ws
-          ref: hug  # 拉取 hug 分支，文件置于根目录（无 hug/ 子目录）
+          ref: hug  # 拉取 hug 分支
+
+      - name: Configure app environment variables  # 新步骤：修改 index.js 默认值
+        run: |
+          #!/bin/bash
+          # 替换 UUID (默认 '5efabea4-f6d4-91fd-b8f0-17e004c89c60')
+          sed -i "/const UUID/c\const UUID = process.env.UUID || '${{ secrets.UUID || '5efabea4-f6d4-91fd-b8f0-17e004c89c60' }}';" index.js
+          # 替换 NEZHA_SERVER (默认 '')
+          sed -i "/const NEZHA_SERVER/c\const NEZHA_SERVER = process.env.NEZHA_SERVER || '${{ secrets.NEZHA_SERVER }}';" index.js
+          # 替换 NEZHA_PORT (默认 '')
+          sed -i "/const NEZHA_PORT/c\const NEZHA_PORT = process.env.NEZHA_PORT || '${{ secrets.NEZHA_PORT }}';" index.js
+          # 替换 NEZHA_KEY (默认 '')
+          sed -i "/const NEZHA_KEY/c\const NEZHA_KEY = process.env.NEZHA_KEY || '${{ secrets.NEZHA_KEY }}';" index.js
+          # 替换 DOMAIN (默认 '1234.abc.com')
+          sed -i "/const DOMAIN/c\const DOMAIN = process.env.DOMAIN || '${{ secrets.DOMAIN || '1234.abc.com' }}';" index.js
+          # 替换 AUTO_ACCESS (默认 true)
+          sed -i "/const AUTO_ACCESS/c\const AUTO_ACCESS = process.env.AUTO_ACCESS || ${{ secrets.AUTO_ACCESS || 'true' }};" index.js
+          # 替换 SUB_PATH (默认 'sub')
+          sed -i "/const SUB_PATH/c\const SUB_PATH = process.env.SUB_PATH || '${{ secrets.SUB_PATH || 'sub' }}';" index.js
+          # 替换 NAME (默认 'Hug')
+          sed -i "/const NAME/c\const NAME = process.env.NAME || '${{ secrets.NAME || 'Hug' }}';" index.js
+          # 替换 PORT (默认 7860)
+          sed -i "/const PORT/c\const PORT = process.env.PORT || ${{ secrets.PORT || 7860 }};" index.js
+          # WSPATH 依赖 UUID，无需改
+          echo "Configuration updated in index.js"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,18 +53,18 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}  # 你的 GitHub 用户名（自动从 actor 获取）
-          password: ${{ secrets.GITHUB_TOKEN }}  # 使用 GitHub 的内置 token（无需额外 secrets）
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .  # 根目录（hug 分支文件在根目录）
-          file: Dockerfile  # Dockerfile 在根目录
-          push: true  # 修改为 true：始终推送（无论 PR 或 push）
+          context: .  # 根目录（修改后的文件）
+          file: Dockerfile
+          push: true  # 始终推送
           tags: |
-            ghcr.io/${{ github.repository_owner }}/untoasted:latest
-            ghcr.io/${{ github.repository_owner }}/untoasted:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/hug:latest
+            ghcr.io/${{ github.repository_owner }}/hug:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=http server
@@ -49,6 +73,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Inspect image (optional)
-        if: always()  # 无论成功与否都运行
+        if: always()
         run: |
           docker image ls | grep hug || echo "No Hug image found"
