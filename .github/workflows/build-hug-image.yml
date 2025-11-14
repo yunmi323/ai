@@ -39,9 +39,9 @@ jobs:
           file: ./hug/Dockerfile  # 指定 Dockerfile
           push: ${{ github.event_name != 'pull_request' }}  # PR 时只构建不推送
           tags: |
-            ghcr.io/${{ github.repository_owner }}/hug:latest  # 你的镜像标签：ghcr.io/yourusername/hug:latest（自动用 repo owner）
-            ghcr.io/${{ github.repository_owner }}/hug:${{ github.sha }}  # 可选：带 commit SHA 的标签
-            type=sha  # 原动态标签
+            ghcr.io/${{ github.repository_owner }}/hug:latest
+            ghcr.io/${{ github.repository_owner }}/hug:${{ github.sha }}
+            type=sha
             type=ref,event=branch
             type=ref,event=pr
             type=ref,event=tag
