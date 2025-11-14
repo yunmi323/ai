@@ -1,0 +1,54 @@
+name: Build Hug Image
+
+on:
+  push:
+    branches: [ main ]  # 替换为你的主分支名称，例如 'master'
+    paths:
+      - 'hug/**'  # 可选：只在 hug 相关文件变化时触发
+  pull_request:
+    branches: [ main ]  # PR 触发，用于测试构建
+  workflow_dispatch:  # 允许手动触发（推荐）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read  # 基本权限
+      packages: write  # GHCR 推送需要写权限
+    steps:
+      - name: Checkout original repository (hug branch)
+        uses: actions/checkout@v4
+        with:
+          repository: eooce/node-ws
+          ref: hug  # 拉取 hug 分支，包含 hug/ 目录
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}  # 你的 GitHub 用户名（自动从 actor 获取）
+          password: ${{ secrets.GITHUB_TOKEN }}  # 使用 GitHub 的内置 token（无需额外 secrets）
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./hug  # 构建上下文：从拉取的 hug/ 目录
+          file: ./hug/Dockerfile  # 指定 Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}  # PR 时只构建不推送
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/hug:latest  # 你的镜像标签：ghcr.io/yourusername/hug:latest（自动用 repo owner）
+            ghcr.io/${{ github.repository_owner }}/hug:${{ github.sha }}  # 可选：带 commit SHA 的标签
+            type=sha  # 原动态标签
+            type=ref,event=branch
+            type=ref,event=pr
+            type=ref,event=tag
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Inspect image (optional)
+        if: always()  # 无论成功与否都运行
+        run: |
+          docker image ls | grep hug || echo "No Hug image found"
