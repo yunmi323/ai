@@ -35,12 +35,16 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .  # 最小修改：改为根目录（hug 分支文件在根目录）
-          file: Dockerfile  # 最小修改：Dockerfile 在根目录
-          push: ${{ github.event_name != 'pull_request' }}  # PR 时只构建不推送
+          context: .  # 根目录（hug 分支文件在根目录）
+          file: Dockerfile  # Dockerfile 在根目录
+          push: true  # 修改为 true：始终推送（无论 PR 或 push）
           tags: |
-            ghcr.io/${{ github.repository_owner }}/hug:latest
-            ghcr.io/${{ github.repository_owner }}/hug:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/untoasted:latest
+            ghcr.io/${{ github.repository_owner }}/untoasted:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=http server
+            org.opencontainers.image.licenses=MIT
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
