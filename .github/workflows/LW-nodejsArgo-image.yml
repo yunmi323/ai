@@ -1,4 +1,4 @@
-name: Build Hug Image
+name: Build Nodejs-Docker Image
 
 on:
   push:
