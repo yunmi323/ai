@@ -15,30 +15,28 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout original repository (hug branch)
-        uses: actions/checkout@v4
+      - name: Checkout original repository
+        uses: actions/checkout@v6
         with:
           repository: eooce/nodejs-argo
           ref: main
 
       # ==================== 替换 index.html ====================
-      - name: Replace index.html with AIweb/jump.html from this repo
+      - name: Replace index.html with AIweb/jump.html
         run: |
           echo "Replacing ./index.html with AIweb/jump.html from ${{ github.repository }}"
           
           if [ -f "${{ github.workspace }}/AIweb/jump.html" ]; then
             cp -f "${{ github.workspace }}/AIweb/jump.html" ./index.html
-            echo "✅ Successfully replaced index.html with AIweb/jump.html"
+            echo "✅ Successfully replaced index.html"
             ls -la ./index.html
           else
-            echo "❌ Error: AIweb/jump.html not found in this repository!"
-            echo "Current directory contents:"
+            echo "❌ Error: AIweb/jump.html not found!"
             ls -la
-            echo "AIweb directory contents:"
             ls -la AIweb/ || echo "AIweb folder not found"
             exit 1
           fi
-      # =======================================================
+      # ============================================================
 
       - name: Configure app environment variables
         run: |
@@ -67,21 +65,21 @@ jobs:
           sed -i "/const PORT/c\const PORT = process.env.PORT || ${{ secrets.PORT || 3000 }};" index.js
 
           echo "Configuration updated in index.js"
-      
+
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
-          context: .  
+          context: .
           file: Dockerfile
           push: true
           tags: |
@@ -93,7 +91,3 @@ jobs:
             org.opencontainers.image.licenses=MIT
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Inspect image (optional)
-        if: always()
-        run: docker image ls | grep haven2546 || echo "No image found"
