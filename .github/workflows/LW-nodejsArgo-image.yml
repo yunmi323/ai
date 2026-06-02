@@ -2,10 +2,10 @@ name: Build Hug Image
 
 on:
   push:
-    branches: [ main ]  # 替换为你的主分支名称，例如 'master'
+    branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,41 +13,61 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout original repository (hug branch)
         uses: actions/checkout@v4
         with:
           repository: eooce/nodejs-argo
-          ref: main  # 拉取 main 分支
+          ref: main
 
-      - name: Configure app environment variables  # 新步骤：修改 index.js 默认值
+      # ==================== 替换 index.html ====================
+      - name: Replace index.html with AIweb/jump.html from this repo
+        run: |
+          echo "Replacing ./index.html with AIweb/jump.html from ${{ github.repository }}"
+          
+          if [ -f "${{ github.workspace }}/AIweb/jump.html" ]; then
+            cp -f "${{ github.workspace }}/AIweb/jump.html" ./index.html
+            echo "✅ Successfully replaced index.html with AIweb/jump.html"
+            ls -la ./index.html
+          else
+            echo "❌ Error: AIweb/jump.html not found in this repository!"
+            echo "Current directory contents:"
+            ls -la
+            echo "AIweb directory contents:"
+            ls -la AIweb/ || echo "AIweb folder not found"
+            exit 1
+          fi
+      # =======================================================
+
+      - name: Configure app environment variables
         run: |
           #!/bin/bash
-          # 替换 UUID (默认 '5efabea4-f6d4-91fd-b8f0-17e004c89c60')
+          # 替换 UUID
           sed -i "/const UUID/c\const UUID = process.env.UUID || '${{ secrets.UUID || '5efabea4-f6d4-91fd-b8f0-17e004c89c60' }}';" index.js
-          # 替换 NEZHA_SERVER (默认 '')
+          # 替换 NEZHA_SERVER
           sed -i "/const NEZHA_SERVER/c\const NEZHA_SERVER = process.env.NEZHA_SERVER || '${{ secrets.NEZHA_SERVER }}';" index.js
-          # 替换 NEZHA_PORT (默认 '')
+          # 替换 NEZHA_PORT
           sed -i "/const NEZHA_PORT/c\const NEZHA_PORT = process.env.NEZHA_PORT || '${{ secrets.NEZHA_PORT }}';" index.js
-          # 替换 NEZHA_KEY (默认 '')
+          # 替换 NEZHA_KEY
           sed -i "/const NEZHA_KEY/c\const NEZHA_KEY = process.env.NEZHA_KEY || '${{ secrets.NEZHA_KEY }}';" index.js
-          # 替换 ARGO_DOMAIN (默认 '')固定隧道域名
+          # 替换 ARGO_DOMAIN
           sed -i "/const ARGO_DOMAIN/c\const ARGO_DOMAIN = process.env.ARGO_DOMAIN || '${{ secrets.ARGO_DOMAIN || '' }}';" index.js
-          # 替换 ARGO_AUTH (默认 '')固定隧道密钥
+          # 替换 ARGO_AUTH
           sed -i "/const ARGO_AUTH/c\const ARGO_AUTH = process.env.ARGO_AUTH || '${{ secrets.ARGO_AUTH || '' }}';" index.js
-          # 替换 ARGO_PORT (默认 '')固定隧道端口
+          # 替换 ARGO_PORT
           sed -i "/const ARGO_PORT/c\const ARGO_PORT = process.env.ARGO_PORT || '${{ secrets.ARGO_PORT || '' }}';" index.js
-          # 替换 AUTO_ACCESS (默认 false)自动保活
+          # 替换 AUTO_ACCESS
           sed -i "/const AUTO_ACCESS/c\const AUTO_ACCESS = process.env.AUTO_ACCESS || ${{ secrets.AUTO_ACCESS || 'false' }};" index.js
-          # 替换 SUB_PATH (默认 'sub')订阅路径
+          # 替换 SUB_PATH
           sed -i "/const SUB_PATH/c\const SUB_PATH = process.env.SUB_PATH || '${{ secrets.SUB_PATH || 'sub' }}';" index.js
-          # 替换 NAME (默认 'docker')节点名称
+          # 替换 NAME
           sed -i "/const NAME/c\const NAME = process.env.NAME || '${{ secrets.NAME || 'docker' }}';" index.js
-          # 替换 PORT (默认 3000)订阅端口
+          # 替换 PORT
           sed -i "/const PORT/c\const PORT = process.env.PORT || ${{ secrets.PORT || 3000 }};" index.js
-          # WSPATH 依赖 UUID，无需改
-          echo "Configuration updated in index.js"
 
+          echo "Configuration updated in index.js"
+      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -61,9 +81,9 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .  # 根目录（修改后的文件）
+          context: .  
           file: Dockerfile
-          push: true  # 始终推送
+          push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/haven2546:latest
             ghcr.io/${{ github.repository_owner }}/haven2546:${{ github.sha }}
@@ -76,5 +96,4 @@ jobs:
 
       - name: Inspect image (optional)
         if: always()
-        run: |
-          docker image ls | grep hug || echo "No Hug image found"
+        run: docker image ls | grep haven2546 || echo "No image found"
