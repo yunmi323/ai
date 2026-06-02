@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全网随机跳转</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{
+            height:100vh;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            background:#f7f8fa;
+            font-family:system-ui, sans-serif;
+            position:relative;
+            overflow:hidden;
+        }
+        .loader{
+            width:70px;
+            height:70px;
+            border:6px solid #e2e6ed;
+            border-top:6px solid #2577e3;
+            border-radius:50%;
+            animation: spin 1s linear infinite;
+            margin-bottom:24px;
+        }
+        @keyframes spin{
+            0%{transform:rotate(0deg)}
+            100%{transform:rotate(360deg)}
+        }
+        .tips{
+            font-size:19px;
+            color:#303133;
+        }
+        .count{
+            font-size:32px;
+            color:#e53e3e;
+            margin-top:10px;
+            font-weight:bold;
+        }
+        .egg-btn{
+            position:absolute;
+            font-size:62px;
+            background:transparent;
+            border:none;
+            cursor:pointer;
+            user-select:none;
+            /*位置与透明度分开过渡，实现缓慢漂移+持续若隐若现*/
+            transition:left var(--moveT)s ease-in-out, top var(--moveT)s ease-in-out;
+            --moveT:1.4;
+        }
+        .hint{
+            position:absolute;
+            bottom:30px;
+            left:50%;
+            transform:translateX(-50%);
+            font-size:13px;color:#777;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <div class="tips">加载就绪，倒计时后随机跳转站点</div>
+    <div class="count" id="time">4</div>
+    <button class="egg-btn" id="egg">🥚</button>
+    <div class="hint">单击🥚终止原跳转：50%新开标签并关闭本页 / 50%当前页跳转；双击🥚更换目标网址</div>
+
+    <script>
+        //常规网站库
+        const siteList = [
+            "https://www.baidu.com","https://www.taobao.com","https://www.jd.com","https://www.douyin.com","https://www.bilibili.com",
+            "https://www.pinduoduo.com","https://www.xiaohongshu.com","https://www.163.com","https://www.qq.com","https://www.weibo.com",
+            "https://www.zhihu.com","https://www.sogou.com","https://www.12306.cn","https://www.youku.com","https://www.iqiyi.com","https://www.aliyun.com",
+            "https://www.eastmoney.com","https://www.sina.com.cn","https://www.cs.com.cn","https://www.wegame.com.cn","https://www.17173.com",
+            "https://www.taptap.com","https://manhua.bilibili.com","https://www.manmanapp.com","https://www.google.com","https://www.youtube.com",
+            "https://x.com","https://www.amazon.com","https://www.wikipedia.org","https://www.instagram.com","https://www.microsoft.com",
+            "https://www.apple.com","https://www.reddit.com","https://www.netflix.com","https://store.steampowered.com","https://www.ebay.com"
+        ];
+        //彩蛋小众网站
+        const eggList = [
+            "https://github.com","https://gitee.com","https://dribbble.com","https://codepen.io","https://figma.com",
+            "https://v2ex.com","https://juejin.cn","https://leetcode.cn"
+        ];
+
+        let second = 4;
+        let timer = null;
+        let floatPosTimer = null;
+        let fadeTimer = null;
+        let targetUrl = "";
+        const timeDom = document.getElementById('time');
+        const btn = document.getElementById('egg');
+
+        //1.缓慢漂移位置：随机移动时长1~3秒，平滑游走不瞬移
+        function moveEggPos(){
+            const maxX = window.innerWidth - 75;
+            const maxY = window.innerHeight - 75;
+            let x = Math.random() * maxX;
+            let y = Math.random() * maxY;
+            let moveTime = (Math.random() * 2 + 1).toFixed(2); //1~3s随机移动耗时
+            btn.style.setProperty('--moveT', moveTime);
+            btn.style.left = x + 'px';
+            btn.style.top = y + 'px';
+        }
+        //2.持续实时随机透明度，缓慢渐变若隐若现0.35~1
+        function fadeEggOpacity(){
+            let opa = Math.random()*0.65 + 0.35;
+            btn.style.transition = 'opacity 1.2s ease';
+            btn.style.opacity = opa;
+            //改回位置过渡配置，不影响下次移动
+            setTimeout(()=>{
+                btn.style.transition = `left var(--moveT)s ease-in-out, top var(--moveT)s ease-in-out`;
+            },1200)
+        }
+
+        function getNewTarget(){
+            targetUrl = siteList[Math.floor(Math.random()*siteList.length)];
+        }
+
+        function startCount(){
+            clearInterval(timer);
+            clearInterval(floatPosTimer);
+            clearInterval(fadeTimer);
+            second = 4;
+            timeDom.innerText = second;
+            getNewTarget();
+            moveEggPos();
+            //位置：2~3.5秒换一次坐标
+            floatPosTimer = setInterval(moveEggPos, Math.random()*1500 + 2000);
+            //透明度：800~1500ms随机淡变，持续若隐若现
+            fadeTimer = setInterval(fadeEggOpacity, Math.random()*700 + 800);
+
+            timer = setInterval(()=>{
+                second--;
+                timeDom.innerText = second;
+                if(second <= 0){
+                    clearInterval(timer);
+                    clearInterval(floatPosTimer);
+                    clearInterval(fadeTimer);
+                    location.href = targetUrl;
+                }
+            },1000)
+        }
+        startCount();
+
+        //单击：终止全部计时，50%新标签+关本页 / 50%本页跳转彩蛋
+        btn.onclick = ()=>{
+            clearInterval(timer);
+            clearInterval(floatPosTimer);
+            clearInterval(fadeTimer);
+            const rndSite = eggList[Math.floor(Math.random()*eggList.length)];
+            if(Math.random()>0.5){
+                window.open(rndSite,"_blank");
+                window.close();
+            }else{
+                location.href = rndSite;
+            }
+        };
+        //双击仅更换跳转目标
+        btn.ondblclick = e=>{
+            e.preventDefault();
+            getNewTarget();
+        };
+    </script>
+</body>
+</html>
